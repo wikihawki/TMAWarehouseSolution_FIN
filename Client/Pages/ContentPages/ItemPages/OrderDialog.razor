@@ -1,0 +1,105 @@
+﻿<SfDialog Width="280px" IsModal="true" ShowCloseIcon="true" @bind-Visible="IsVisible">
+    <DialogEvents OnOpen="OpenDialog"></DialogEvents>
+    <DialogTemplates>
+        <Header>
+            Order
+        </Header>
+        <Content>
+            <EditForm Enhance Model="ItemRequest" OnValidSubmit="Order">
+                <DataAnnotationsValidator />
+                <div class="form-group">
+                    <label class="form-label">Employee Name</label>
+                    <input @bind="ItemRequest.EmployeeName" class="form-control" />
+                    <ValidationMessage For="()=>ItemRequest.EmployeeName" class="text-danger" />
+                </div>
+
+               <div class="form-group mt-3 mb-3">
+                    <label class="form-label">Select Item</label>
+                    <SfDropDownList TValue="int" TItem="ManageItem" Placeholder="Select Item" DataSource="ManageItems">
+                        <DropDownListFieldSettings Value="ItemId" Text="ItemGroup"></DropDownListFieldSettings>
+                        <DropDownListEvents TValue="int" TItem="ManageItem" ValueChange="OnItemValueChange"></DropDownListEvents>
+                        </SfDropDownList>
+                    <ValidationMessage For="()=>ItemRequest.ItemId" class="text-danger" />
+                </div>
+                <div class="form-group mt-3 mb-3">
+                    <label class="form-label">Select Unit</label>
+                        <SfDropDownList TValue="string" TItem="Unit" Placeholder="Select Unit" DataSource="Units">
+                            <DropDownListFieldSettings Value="Name" Text="Name"></DropDownListFieldSettings>
+                            <DropDownListEvents TValue="string" TItem="Unit" ValueChange="OnUnitValueChange"></DropDownListEvents>
+                        </SfDropDownList>
+                    <ValidationMessage For="()=>ItemRequest.Unit" class="text-danger" />
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Quantity</label>
+                    <input @bind="ItemRequest.Quantity" class="form-control" />
+                    <ValidationMessage For="()=>ItemRequest.Quantity" class="text-danger" />
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Comment</label>
+                    <textarea @bind-value="@ItemRequest.Comment" @bind-value:event="oninput" class="form-control" rows="3"></textarea>
+                    <ValidationMessage For="()=>ItemRequest.Comment" class="text-danger" />
+                </div>
+
+                <button class="btn btn-primary float-end mt-4 mb-5" type="submit">
+                    Submit
+                </button>
+            </EditForm>
+        </Content>
+    </DialogTemplates>
+
+
+</SfDialog>
+
+
+@code {
+    [Parameter] public ManageItemRequest ItemRequest { get; set; } = new();
+    [Parameter] public List<ManageItem> ManageItems { get; set; } = new();
+    [Parameter] public List<Unit> Units { get; set; } = new();
+    [Parameter] public List<Status> Statuses { get; set; } = new();
+
+    [Parameter] public EventCallback<ManageItemRequest> HandleOrderOperationEvent { get; set; } = new();
+    private bool IsVisible { get; set; } = false;
+    private int MaxQuantity { get; set; } = 0;
+
+
+
+
+    private async void Order()
+    {
+        Console.WriteLine(ItemRequest.Quantity);
+        if (ItemRequest.Quantity > MaxQuantity)
+            await dialogService.AlertAsync("Your order is bigger than this item quantity in warehouse inventory.", "Alert");
+        else
+        {
+            
+            await HandleOrderOperationEvent.InvokeAsync(ItemRequest);
+            IsVisible = false;
+            StateHasChanged();
+        }
+
+
+
+    }
+
+    public void OpenDialog()
+    {
+        IsVisible = true;
+        StateHasChanged();
+    }
+
+    public void OnUnitValueChange(ChangeEventArgs<string, Unit> args)
+    {
+        ItemRequest.Unit = args.Value.ToString();
+
+    }
+
+    public void OnItemValueChange(ChangeEventArgs<int, ManageItem> args)
+    {
+        var item = ManageItems.FirstOrDefault(r => r.ItemId == args.Value);
+        MaxQuantity = item!.Quantity;
+        Console.WriteLine(MaxQuantity);
+        ItemRequest.ItemId = args.Value;
+        ItemRequest.ItemName = item!.ItemGroup;
+    }
+
+}

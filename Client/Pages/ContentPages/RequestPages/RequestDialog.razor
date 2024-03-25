@@ -1,0 +1,78 @@
+﻿<SfDialog Width="280px" IsModal="true" ShowCloseIcon="true" @bind-Visible="IsVisible">
+    <DialogEvents OnOpen="OpenDialog"></DialogEvents>
+    <DialogTemplates>
+        <Header>
+            @Title
+        </Header>
+        <Content>
+            <EditForm Enhance Model="ManageItemRequest" OnValidSubmit="Save">
+                <DataAnnotationsValidator />
+
+                @if (Title == "Accept Request")
+                {
+                    <button class="btn btn-primary float-end mt-4 mb-5" type="submit">
+                        Accept
+                    </button>
+                }
+                else
+                {
+                    <div class="form-group">
+                        <label class="form-label">Comment</label>
+                        <textarea @bind-value="@ManageItemRequest.Comment" @bind-value:event="oninput" class="form-control" rows="3"></textarea>
+                        <ValidationMessage For="()=>ManageItemRequest.Comment" class="text-danger" />
+                    </div>
+                    <button class="btn btn-primary float-end mt-4 mb-5" type="submit">
+                        Reject
+                    </button>
+                }
+
+
+            </EditForm>
+        </Content>
+    </DialogTemplates>
+
+
+</SfDialog>
+
+
+@code {
+    [Parameter] public ManageItemRequest ManageItemRequest { get; set; } = new();
+    [Parameter] public EventCallback<ManageItemRequest> HandleOrderOperationEvent { get; set; } = new();
+    public string Title { get; set; } = "Accept Request";
+    private bool IsVisible { get; set; } = false;
+
+
+
+
+
+
+    private async void Save()
+    {
+        if (Title == "Accept Request")
+        {
+            ManageItemRequest.Status = Constants.Accepted;
+        }
+        else
+        {
+            ManageItemRequest.Status = Constants.Rejected;
+        }
+        await HandleOrderOperationEvent.InvokeAsync(ManageItemRequest);
+        
+        IsVisible = false;
+        StateHasChanged();
+
+    }
+
+    public void ChangeTitle(string title)
+    {
+        Title = title;
+    }
+
+
+    public void OpenDialog()
+    {
+        IsVisible = true;
+        StateHasChanged();
+    }
+
+}

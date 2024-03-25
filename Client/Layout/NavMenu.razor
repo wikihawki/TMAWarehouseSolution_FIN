@@ -1,0 +1,64 @@
+﻿
+<AuthorizeView>
+    <Authorized>
+        <div class="top-row ps-s navbar navbar-dark">
+
+            <div class="container-fluid">
+                <a class="navbar-brand" href="">
+                    Welcome, @context.User.Identity!.Name
+                </a>
+
+            </div>
+        </div>
+
+        <div class="nav-scrollable">
+            <nav class="flex-column">
+
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" @onclick="HomeClicked" href="" Match="NavLinkMatch.All">
+                        <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> Home
+                    </NavLink>
+                </div>
+                <AuthorizeView Roles="admin" Context="administration">
+                    <div class="nav-item px-3">
+                        <NavLink class="nav-link p-2" @onclick="UserClicked"  style="cursor:pointer;" oncanplaythrough="javascript:void()">
+                            <div class="hstack gap-1">
+                                <span class="bi bi-people fs-5 text-center" aria-hidden="true" style="margin-top:-2rem"></span>
+                                <span>Administration</span>
+                            </div>
+                        </NavLink>
+                    </div>
+                </AuthorizeView>
+                <AuthorizeView Roles="admin,coordinator" Context="requests">
+                    <div class="nav-item px-3">
+                        <NavLink class="nav-link p-2" @onclick="RequestClicked" style="cursor:pointer;" oncanplaythrough="javascript:void()">
+                            <div class="hstack gap-1">
+                                <span class="bi bi-clipboard-check fs-5 text-center" aria-hidden="true" style="margin-top:-2rem"></span>
+                                <span>Requests</span>
+                            </div>
+                        </NavLink>
+                    </div>
+                </AuthorizeView>
+                <AuthorizeView Context="items">
+                    <div class="nav-item px-3">
+                        <NavLink class="nav-link p-2" @onclick="ItemClicked" style="cursor:pointer;" oncanplaythrough="javascript:void()">
+                            <div class="hstack gap-1">
+                                <span class="bi bi-box-seam fs-5 text-center" aria-hidden="true" style="margin-top:-2rem"></span>
+                                <span>Items</span>
+                            </div>
+                        </NavLink>
+                    </div>
+                </AuthorizeView>
+
+            </nav>
+        </div>
+    </Authorized>
+</AuthorizeView>
+
+@code {
+    public string DepartmentMargin { get; set; } = "-3.5rem";
+    void UserClicked() => allState.UserClicked();
+    void ItemClicked() => allState.ItemClicked();
+    void RequestClicked() => allState.ItemRequestClicked();
+    void HomeClicked() => allState.ResetAllStates();
+}

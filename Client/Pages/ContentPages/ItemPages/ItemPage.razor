@@ -1,0 +1,346 @@
+﻿@if (allState.ShowItem)
+{
+    <div class="container mt-5">
+        <div class="row">
+            <div class="col-lg-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h4 class="float-start">Manage Items</h4>
+                        <AuthorizeView Roles="admin, coordinator" Context="items">
+                            <button class="btn btn-outline-success float-end" @onclick="AddButtonClicked">
+                                <i class="bi bi-plus-circle-dotted"></i>
+                                Add Item
+                            </button>
+                        </AuthorizeView>
+                        <AuthorizeView Roles="admin, employee" Context="items">
+                            <button class="btn btn-outline-success float-end" @onclick="OrderButtonClicked">
+                            <i class="bi bi-plus-circle-dotted"></i>
+                           Order
+                        </button>
+                        </AuthorizeView>
+                    </div>
+                    <div class="card-header" style="max-height:580px;overflow-x:hidden;overflow-y:scroll">
+                        <div class="card-body">
+                            <table class="table table-striped">
+                                <thead>
+                                    <tr>
+
+                                        <th scope="col">#</th>
+                                        <th>
+                                            <span class="sort-link" onclick="@(() => SortTable("ItemId"))">Item Id</span>
+                                            <i class="bi @(GetSortStyle("ItemId"))"></i>
+                                        </th>
+                                        <th scope="col">
+                                            <span class="sort-link" onclick="@(() => SortTable("ItemGroup"))">Item Group</span>
+                                            <i class="bi @(GetSortStyle("ItemGroup"))"></i>
+                                        </th>
+                                        <th scope="col">
+                                            <span class="sort-link" onclick="@(() => SortTable("Unit"))">Unit</span>
+                                            <i class="bi @(GetSortStyle("Unit"))"></i>
+                                        </th>
+                                        <th scope="col">
+                                            <span class="sort-link" onclick="@(() => SortTable("Quantity"))">Quantity</span>
+                                            <i class="bi @(GetSortStyle("Quantity"))"></i>
+                                        </th>
+                                        <th scope="col">
+                                            <span class="sort-link" onclick="@(() => SortTable("UAH"))">UAH</span>
+                                            <i class="bi @(GetSortStyle("UAH"))"></i>
+                                        </th>
+                                        <th scope="col">
+                                            <span class="sort-link" onclick="@(() => SortTable("Status"))">Status</span>
+                                            <i class="bi @(GetSortStyle("Status"))"></i>
+                                        </th>
+                                        <th scope="col">
+                                            <span class="sort-link" onclick="@(() => SortTable("StorageLocation"))">Storage location</span>
+                                            <i class="bi @(GetSortStyle("StorageLocation"))"></i>
+                                        </th>
+                                        <th scope="col">
+                                            <span class="sort-link" onclick="@(() => SortTable("ContactPerson"))">Contact person</span>
+                                            <i class="bi @(GetSortStyle("ContactPerson"))"></i>
+                                        </th>
+                                        <AuthorizeView Roles="admin, coordinator" Context="items">
+                                        <th scope="col">Actions</th>
+                                        </AuthorizeView>
+                                    </tr>
+                                </thead>
+
+                                <tbody>
+                                    @if (ManageItems is not null)
+                                    {
+                                        int count = 1;
+                                        foreach (var item in ManageItems)
+                                        {
+                                            <tr>
+                                                <th scope="row">@count</th>
+                                                <td>@item.ItemId</td>
+                                                <td>@item.ItemGroup</td>
+                                                <td>@item.Unit</td>
+                                                <td>@item.Quantity</td>
+                                                <td>@item.UAH</td>
+                                                <td>@item.Status</td>
+                                                <td>@item.StorageLocation</td>
+                                                <td>@item.ContactPerson</td>
+                                                 <AuthorizeView Roles="admin, coordinator" Context="items">
+                                                <td>
+                                                    <i class="bi bi-pencil text-info" id="cursorStyle"
+                                                       @onclick="()=>EditClicked(item)"></i>
+                                                    <i class="bi bi-trash text-danger" id="cursorStyle"
+                                                       @onclick="()=>DeleteClicked(item)"></i>
+                                                </td>
+                                                </AuthorizeView>
+                                            </tr>
+                                            count++;
+                                        }
+
+                                    }
+                                    else
+                                    {
+                                        <tr>
+                                            <td colspan="4"><div class="alert alert-info text-center">No department added yet!</div> </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<ItemDialog @ref="itemDialog"
+            ManageItem="ManageItem"
+            Units="Units"
+            ItemGroups="ItemGroups"
+            HandleSaveOperationEvent="HandleSaveOperationEvent" />
+
+
+<OrderDialog @ref="orderDialog"
+             ItemRequest="ItemRequest"
+             ManageItems="ManageItems"
+             Units="Units"
+             HandleOrderOperationEvent="HandleOrderOperationEvent" />
+
+@code {
+    ItemDialog? itemDialog;
+    OrderDialog? orderDialog;
+    ManageItem ManageItem = new();
+    ManageItemRequest ItemRequest = new();
+
+    public List<ManageItem> ManageItems { get; set; } = new();
+    public List<Unit> Units { get; set; } = new();
+    public List<ItemGroup> ItemGroups { get; set; } = new();
+    public List<Status> Statuses { get; set; } = new();
+    public string Title { get; set; } = "Add";
+    private bool IsSortedAscending;
+    private string CurrentSortColumn = "";
+
+    protected async override Task OnInitializedAsync()
+    {
+        await GetItems();
+        await GetUnits();
+        await GetItemGroups();
+        allState.Action += StateHasChanged;
+
+    }
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        await GetItems();
+        await GetUnits();
+        await GetItemGroups();
+        allState.Action += StateHasChanged;
+    }
+
+
+    private async Task GetItems()
+    {
+        ManageItems = await manageItemService.GetWarehouseItems(Constants.ItemRequestBaseUrl);
+    }
+    private async Task GetUnits()
+    {
+        Units = await manageItemService.GetUnits(Constants.ItemRequestBaseUrl);
+    }
+    private async Task GetItemGroups()
+    {
+        ItemGroups = await manageItemService.GetItemGroups(Constants.ItemRequestBaseUrl);
+    }
+    private async Task GetStatusesGroups()
+    {
+        Statuses = await manageItemRequestService.GetStatuses(Constants.ItemRequestBaseUrl);
+    }
+
+
+    void AddButtonClicked()
+    {
+        itemDialog?.ChangeTitle("Add item");
+        ManageItem = new();
+        itemDialog?.OpenDialog();
+
+    }
+
+    void OrderButtonClicked()
+    {
+        ManageItem = new();
+        orderDialog?.OpenDialog();
+
+    }
+
+    private async Task HandleSaveOperationEvent(ManageItem item)
+    {
+        bool successCheck = false;
+        if (ManageItem.ItemId > 0)
+        {
+            var result = await manageItemService.UpdateWarehouseItem(item, Constants.ItemRequestBaseUrl);
+            successCheck = await DisplayMessage(result.Flag, result.Message);
+
+        }
+        else
+        {
+            var result = await manageItemService
+            .InsertWarehouseItem(item, Constants.ItemRequestBaseUrl);
+            successCheck = await DisplayMessage(result.Flag, result.Message);
+        }
+        if (successCheck)
+        {
+            ManageItem = new();
+            await GetItems();
+            itemDialog?.ChangeTitle("Add item");
+        }
+
+    }
+
+    private async Task HandleOrderOperationEvent(ManageItemRequest request)
+    {
+        bool successCheck = false;
+
+        var result = await manageItemRequestService.InsertRequest(request, Constants.ItemOrderBaseUrl);
+        successCheck = await DisplayMessage(result.Flag, result.Message);
+        if (successCheck)
+        {
+            ManageItem = new();
+            await GetItems();
+            await InvokeAsync(StateHasChanged);
+        }
+
+    }
+
+    private void EditClicked(ManageItem item)
+    {
+        itemDialog?.ChangeTitle("Update Item");
+        ManageItem = item;
+        itemDialog?.OpenDialog();
+
+
+    }
+
+    private async void DeleteClicked(ManageItem item)
+    {
+        bool confirm = await dialogService.ConfirmAsync($"Are you sure you wanna delete this item?", "Confirm delete");
+        if (!confirm) return;
+
+        var response = await manageItemService.DeleteItem(item.ItemId, Constants.ItemRequestBaseUrl);
+        var result = await DisplayMessage(response.Flag, response.Message);
+        if (result)
+        {
+            await GetItems();
+        }
+
+
+
+    }
+
+    private async Task<bool> DisplayMessage(bool flag, string message)
+    {
+        if (flag)
+        {
+            await dialogService.AlertAsync(message, "Success Operation");
+            return true;
+
+        }
+        else
+        {
+            await dialogService.AlertAsync(message, "Alert");
+            return false;
+        }
+
+    }
+
+    private void SortTable(string columnName)
+    {
+        //Sorting against a column that is not currently sorted against.
+        if (columnName != CurrentSortColumn)
+        {
+            //We need to force order by ascending on the new column
+            //This line uses reflection and will probably
+            //perform inefficiently in a production environment.
+            ManageItems = ManageItems.OrderBy(x =>
+                                    x.GetType()
+                                    .GetProperty(columnName)?
+                                    .GetValue(x, null))
+                          .ToList();
+            CurrentSortColumn = columnName;
+            IsSortedAscending = true;
+
+        }
+        else //Sorting against same column but in different direction
+        {
+            if (IsSortedAscending)
+            {
+                ManageItems = ManageItems.OrderByDescending(x =>
+                                                  x.GetType()?
+                                                   .GetProperty(columnName)?
+                                                   .GetValue(x, null))
+                             .ToList();
+            }
+            else
+            {
+                ManageItems = ManageItems.OrderBy(x =>
+                                        x.GetType()?
+                                         .GetProperty(columnName)?
+                                         .GetValue(x, null))
+                                         .ToList();
+            }
+            if (!IsSortedAscending)
+            {
+                CurrentSortColumn = "";
+                ManageItems = ManageItems.OrderBy(x =>
+                        x.GetType()?
+                        .GetProperty("ItemId")?
+                        .GetValue(x, null))
+              .ToList();
+                IsSortedAscending = false;
+            }
+            else
+            {
+                IsSortedAscending = !IsSortedAscending;
+            }
+
+
+        }
+    }
+
+
+    private string GetSortStyle(string columnName)
+    {
+        if (CurrentSortColumn != columnName)
+        {
+            return string.Empty;
+        }
+        if (IsSortedAscending)
+        {
+            return "bi-arrow-up-short";
+        }
+        else
+        {
+            Console.WriteLine("fa-sort-down");
+            return "bi-arrow-down-short";
+        }
+    }
+
+    public void Dispose()
+    {
+        allState.Action -= StateHasChanged;
+    }
+
+}

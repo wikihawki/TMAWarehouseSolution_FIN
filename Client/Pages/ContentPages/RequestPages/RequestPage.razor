@@ -1,0 +1,274 @@
+﻿@if (allState.ShowItemRequest)
+{
+    <div class="container mt-5">
+        <div class="row">
+            <div class="col-lg-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h4 class="float-start">Manage Items</h4>
+                    </div>
+                    <div class="card-header" style="max-height:580px;overflow-x:hidden;overflow-y:scroll">
+                        <div class="card-body">
+                            <table class="table table-striped">
+                                <thead>
+                                    <tr>
+
+                                        <th scope="col">#</th>
+                                        <th>
+                                            <span class="sort-link" onclick="@(() => SortTable("RequestId"))">Request Id</span>
+                                            <i class="bi @(GetSortStyle("RequestId"))"></i>
+                                        </th>
+                                        <th scope="col">
+                                            <span class="sort-link" onclick="@(() => SortTable("ItemName"))">Item name</span>
+                                            <i class="bi @(GetSortStyle("ItemName"))"></i>
+                                        </th>
+                                        <th scope="col">
+                                            <span class="sort-link" onclick="@(() => SortTable("Unit"))">Unit</span>
+                                            <i class="bi @(GetSortStyle("Unit"))"></i>
+                                        </th>
+                                        <th scope="col">
+                                            <span class="sort-link" onclick="@(() => SortTable("Quantity"))">Quantity</span>
+                                            <i class="bi @(GetSortStyle("Quantity"))"></i>
+                                        </th>
+                                        <th scope="col">
+                                            <span class="sort-link" onclick="@(() => SortTable("UAH"))">UAH</span>
+                                            <i class="bi @(GetSortStyle("UAH"))"></i>
+                                        </th>
+                                        <th scope="col">
+                                            <span class="sort-link" onclick="@(() => SortTable("Status"))">Status</span>
+                                            <i class="bi @(GetSortStyle("Status"))"></i>
+                                        </th>
+                                        <th scope="col">
+                                            <span class="sort-link" onclick="@(() => SortTable("Comment"))">Comment</span>
+                                            <i class="bi @(GetSortStyle("Comment"))"></i>
+                                        </th>
+                                        <AuthorizeView Roles="admin, coordinator" Context="requests">
+                                            <th scope="col">Actions</th>
+                                        </AuthorizeView>
+                                    </tr>
+                                </thead>
+
+                                <tbody>
+                                    @if (ManageItemRequests is not null)
+                                    {
+                                        int count = 1;
+                                        foreach (var request in ManageItemRequests)
+                                        {
+                                            <tr>
+                                                <th scope="row">@count</th>
+                                                <td>@request.RequestId</td>
+                                                <td>@request.ItemName</td>
+                                                <td>@request.Unit</td>
+                                                <td>@request.Quantity</td>
+                                                <td>@request.UAH</td>
+                                                <td>@request.Status</td>
+                                                <td>@request.Comment</td>
+                                                <AuthorizeView Roles="admin, coordinator" Context="requests">
+                                                    <td>
+                                                        @if (request.Status ==Constants.New)
+                                                        {
+                                                            <i class="bi bi-check-lg text-info" id="cursorStyle"
+                                                               @onclick="()=>AcceptClicked(request)">Accept</i>
+                                                            <i class="bi bi-x-lg text-danger" id="cursorStyle"
+                                                               @onclick="()=>DeclineClicked(request)">Reject</i>
+                                                        }
+
+                                                    </td>
+                                                </AuthorizeView>
+                                            </tr>
+                                            count++;
+                                        }
+
+                                    }
+                                    else
+                                    {
+                                        <tr>
+                                            <td colspan="4"><div class="alert alert-info text-center">No department added yet!</div> </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<RequestDialog @ref="requestDialog"
+               ManageItemRequest="ManageItemRequest"
+               HandleOrderOperationEvent="HandleSaveOperationEvent" />
+
+
+@code {
+    ManageItemRequest ManageItemRequest = new();
+    RequestDialog? requestDialog;
+
+    public List<ManageItemRequest> ManageItemRequests { get; set; } = new();
+    public List<Unit> Units { get; set; } = new();
+    public List<ItemGroup> ItemGroups { get; set; } = new();
+    public List<Status> Statuses { get; set; } = new();
+
+    private bool IsSortedAscending;
+    private string CurrentSortColumn = "";
+
+    protected async override Task OnInitializedAsync()
+    {
+        await GetItems();
+        await GetUnits();
+        await GetItemGroups();
+        allState.Action += StateHasChanged;
+
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        await GetItems();
+        await GetUnits();
+        await GetItemGroups();
+        allState.Action += StateHasChanged;
+    }
+
+    private async Task GetItems()
+    {
+        ManageItemRequests = await manageItemRequestService.GetRequests(Constants.ItemOrderBaseUrl);
+    }
+    private async Task GetUnits()
+    {
+        Units = await manageItemService.GetUnits(Constants.ItemRequestBaseUrl);
+    }
+    private async Task GetItemGroups()
+    {
+        ItemGroups = await manageItemService.GetItemGroups(Constants.ItemRequestBaseUrl);
+    }
+    private async Task GetStatusesGroups()
+    {
+        Statuses = await manageItemRequestService.GetStatuses(Constants.ItemOrderBaseUrl);
+    }
+
+    private async Task HandleSaveOperationEvent(ManageItemRequest request)
+    {
+        bool successCheck = false;
+
+        var result = await manageItemRequestService.UpdateRequest(request, Constants.ItemOrderBaseUrl);
+        successCheck = await DisplayMessage(result.Flag, result.Message);
+        if (successCheck)
+        {
+            ManageItemRequest = new();
+            await GetItems();
+            requestDialog?.ChangeTitle("");
+        }
+
+    }
+
+    private async void AcceptClicked(ManageItemRequest request)
+    {
+        requestDialog?.ChangeTitle("Accept Request");
+        ManageItemRequest = request;
+        requestDialog?.OpenDialog();
+    }
+    private void DeclineClicked(ManageItemRequest request)
+    {
+        requestDialog?.ChangeTitle("Reject Request");
+        ManageItemRequest = request;
+        requestDialog?.OpenDialog();
+
+    }
+
+
+    private async Task<bool> DisplayMessage(bool flag, string message)
+    {
+        if (flag)
+        {
+            await dialogService.AlertAsync(message, "Success Operation");
+            return true;
+
+        }
+        else
+        {
+            await dialogService.AlertAsync(message, "Alert");
+            return false;
+        }
+
+    }
+
+
+    private void SortTable(string columnName)
+    {
+        //Sorting against a column that is not currently sorted against.
+        if (columnName != CurrentSortColumn)
+        {
+            //We need to force order by ascending on the new column
+            //This line uses reflection and will probably
+            //perform inefficiently in a production environment.
+            ManageItemRequests = ManageItemRequests.OrderBy(x =>
+                                    x.GetType()
+                                    .GetProperty(columnName)?
+                                    .GetValue(x, null))
+                          .ToList();
+            CurrentSortColumn = columnName;
+            IsSortedAscending = true;
+
+        }
+        else //Sorting against same column but in different direction
+        {
+            if (IsSortedAscending)
+            {
+                ManageItemRequests = ManageItemRequests.OrderByDescending(x =>
+                                                  x.GetType()?
+                                                   .GetProperty(columnName)?
+                                                   .GetValue(x, null))
+                             .ToList();
+            }
+            else
+            {
+                ManageItemRequests = ManageItemRequests.OrderBy(x =>
+                                        x.GetType()?
+                                         .GetProperty(columnName)?
+                                         .GetValue(x, null))
+                                         .ToList();
+            }
+            if (!IsSortedAscending)
+            {
+                CurrentSortColumn = "";
+                ManageItemRequests = ManageItemRequests.OrderBy(x =>
+                        x.GetType()?
+                        .GetProperty("RequestId")?
+                        .GetValue(x, null))
+              .ToList();
+                IsSortedAscending = false;
+            }
+            else
+            {
+                IsSortedAscending = !IsSortedAscending;
+            }
+
+
+        }
+    }
+
+
+    private string GetSortStyle(string columnName)
+    {
+        if (CurrentSortColumn != columnName)
+        {
+            return string.Empty;
+        }
+        if (IsSortedAscending)
+        {
+            return "bi-arrow-up-short";
+        }
+        else
+        {
+            Console.WriteLine("fa-sort-down");
+            return "bi-arrow-down-short";
+        }
+    }
+
+    public void Dispose()
+    {
+        allState.Action -= StateHasChanged;
+    }
+
+}
